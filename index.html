@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mister Jon Sukses — Latihan Mengetik</title>
+  <style>
+    :root{
+      --text:#e2e8f0;
+      --muted:#94a3b8;
+      --accent:#38bdf8;
+      --bg-dark:#0f172a;
+      --panel: rgba(255,255,255,0.08);
+      --success:#10b981;
+      --danger:#ef4444;
+    }
+    *{box-sizing:border-box;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
+    html,body{height:100%;margin:0;}
+    body{
+      margin:0;padding:0;min-height:100vh;color:var(--text);overflow:hidden;
+      display:flex;align-items:center;justify-content:center;background:var(--bg-dark);
+    }
+
+    /* Animated gradient background */
+    body::before{
+      content:"";position:fixed;inset:0;
+      background:linear-gradient(-45deg,#0f172a,#1e3a8a,#3b82f6,#06b6d4);
+      background-size:400% 400%;z-index:-3;animation:gradMove 18s ease infinite;
+      filter: contrast(1.05) saturate(1.05);
+    }
+    @keyframes gradMove{
+      0%{background-position:0% 50%}
+      50%{background-position:100% 50%}
+      100%{background-position:0% 50%}
+    }
+
+    /* Particles container (bokeh/snow) */
+    #particles{position:fixed;inset:0;z-index:-2;pointer-events:none;overflow:hidden}
+
+    /* Main card */
+    .wrap{
+      width:980px;max-width:95%;margin:30px auto;background:var(--panel);
+      padding:28px;border-radius:14px;box-shadow:0 10px 40px rgba(2,6,23,0.6);
+      position:relative;backdrop-filter: blur(4px);
+    }
+
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    h1{margin:0;color:var(--accent);font-size:1.3rem;display:flex;align-items:center;gap:8px}
+    .controls{display:flex;gap:10px;align-items:center}
+
+    input[type="text"]{
+      background:transparent;border:none;border-bottom:2px solid var(--muted);
+      color:var(--text);padding:8px 10px;font-size:1rem;width:220px;outline:none;
+    }
+
+    #layout{
+      display:grid;grid-template-columns:1fr 360px;gap:18px;margin-top:18px;
+    }
+
+    /* Left: typing area */
+    .panel{
+      background:linear-gradient(rgba(255,255,255,0.02), rgba(255,255,255,0.02));
+      padding:18px;border-radius:10px;
+    }
+
+    #wordArea{font-size:1.9rem;margin:14px 0;padding:14px 18px;border-radius:10px;background:rgba(255,255,255,0.03);display:inline-block}
+    #wordArea span{padding:0 4px;border-radius:6px}
+    #wordArea span.active{background:var(--accent);color:var(--bg-dark)}
+
+    #input{width:100%;padding:12px;border-radius:8px;border:2px solid rgba(255,255,255,0.05);margin-top:10px;background:transparent;color:var(--text);font-size:1.05rem}
+    #input:disabled{opacity:0.6}
+
+    .meta{display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap}
+    .badge{background:rgba(255,255,255,0.03);padding:8px 12px;border-radius:8px;font-size:0.95rem;color:var(--muted)}
+
+    button{
+      background:var(--accent);border:none;padding:9px 14px;border-radius:8px;color:#05203a;font-weight:700;cursor:pointer;
+    }
+    button.secondary{background:transparent;border:2px solid rgba(255,255,255,0.04);color:var(--text);font-weight:600}
+    small{color:var(--muted);display:block;margin-top:8px}
+
+    /* Right column: stats, chart, badges */
+    .side{display:flex;flex-direction:column;gap:12px}
+    .card{background:rgba(255,255,255,0.03);padding:12px;border-radius:10px}
+    #chart{width:100%;height:160px;background:transparent;border-radius:8px}
+
+    .big{font-size:1.1rem;font-weight:700}
+    .small-muted{color:var(--muted);font-size:0.9rem}
+
+    /* Confetti canvas overlay */
+    #confettiCanvas{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:50}
+
+    /* badges styles */
+    .achievement{display:inline-block;padding:8px 12px;border-radius:999px;background:linear-gradient(90deg,#ffd166,#fca311);color:#081827;font-weight:700;margin-right:6px}
+
+    footer{margin-top:12px;text-align:center;color:var(--muted);font-size:0.85rem}
+    @media(max-width:900px){#layout{grid-template-columns:1fr} .side{order:2}}
+  </style>
+</head>
+<body>
+  <!-- background particles -->
+  <div id="particles"></div>
+
+  <div class="wrap" role="main">
+    <header>
+      <h1>🌟 Mister Jon Sukses — Latihan Mengetik</h1>
+
+      <div class="controls">
+        <input id="nameInput" type="text" placeholder="Nama (opsional)" />
+        <div class="badge">Durasi:
+          <select id="durationSelect" style="background:transparent;border:none;color:var(--text);outline:none">
+            <option value="30">30s</option>
+            <option value="60" selected>60s</option>
+            <option value="120">120s</option>
+          </select>
+        </div>
+        <button id="start">Mulai</button>
+        <button id="reset" class="secondary">Ulangi</button>
+      </div>
+    </header>
+
+    <div id="layout">
+      <!-- LEFT -->
+      <div class="panel">
+        <div id="wordArea" aria-live="polite"></div>
+        <input id="input" type="text" placeholder="Ketik di sini..." disabled autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"/>
+
+        <div class="meta">
+          <div class="badge">Waktu: <span id="timer">60 detik</span></div>
+          <div class="badge">WPM: <span id="wpm">0</span></div>
+          <div class="badge">Akurasi: <span id="acc">0%</span></div>
+          <div class="badge">Terbaik: <span id="best">0</span> WPM</div>
+        </div>
+
+        <div id="motivation" style="margin-top:12px;color:var(--accent);font-style:italic">✨ Sukses dimulai dari satu huruf pertama.</div>
+
+        <div style="margin-top:14px">
+          <small class="small-muted">Tip: gunakan tombol <strong>Mulai</strong> untuk memulai, atau <strong>Ulangi</strong> untuk acak kata baru.</small>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="side">
+        <div class="card">
+          <div class="small-muted">Grafik Progres WPM</div>
+          <canvas id="chart"></canvas>
+        </div>
+
+        <div class="card">
+          <div class="small-muted">Lencana Pencapaian</div>
+          <div id="achievements" style="margin-top:8px"></div>
+        </div>
+
+        <div class="card">
+          <div class="small-muted">Quote Motivasi (Indonesia)</div>
+          <div id="quote" style="margin-top:8px;font-weight:700"></div>
+        </div>
+      </div>
+    </div>
+
+    <footer>© 2025 Mister Jon Sukses — Semangat latihan!</footer>
+  </div>
+
+  <!-- confetti overlay -->
+  <canvas id="confettiCanvas"></canvas>
+
+  <script>
+  // ===========================
+  // Background particles (bokeh/snow)
+  // ===========================
+  (function initParticles(){
+    const container = document.getElementById('particles');
+    const total = 28;
+    for(let i=0;i<total;i++){
+      const d = document.createElement('div');
+      d.className = 'p';
+      const size = 6 + Math.random()*18;
+      d.style.width = d.style.height = size + 'px';
+      d.style.borderRadius = '50%';
+      const left = Math.random()*100;
+      d.style.left = left+'%';
+      d.style.top = Math.random()*100+'%';
+      d.style.position='absolute';
+      d.style.background = 'rgba(255,255,255,' + (0.03 + Math.random()*0.18) + ')';
+      d.style.filter = 'blur(' + (1 + Math.random()*4) + 'px)';
+      d.style.transform = 'translateY(0)';
+      container.appendChild(d);
+      // animate upward slowly
+      const dur = 18 + Math.random()*24;
+      d.animate([
+        { transform: 'translateY(0)', opacity: 0 },
+        { transform: 'translateY(-120vh)', opacity: 0.9 }
+      ],{ duration: dur*1000, iterations: Infinity, delay: Math.random()*-dur*1000, easing:'linear' });
+    }
+  })();
+
+  // ===========================
+  // Audio: soft sounds with WebAudio
+  // ===========================
+  const audioCtx = (window.AudioContext || window.webkitAudioContext) ? new (window.AudioContext || window.webkitAudioContext)() : null;
+  function playTone(freq=440, type='sine', duration=0.12, gain=0.06){
+    if(!audioCtx) return;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    g.gain.value = gain;
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+    setTimeout(()=>{ try{o.stop()}catch(e){} }, duration*1000+50);
+  }
+  function soundCorrect(){ playTone(880,'sine',0.09,0.04); playTone(1320,'sine',0.06,0.02); }
+  function soundWrong(){ playTone(220,'sawtooth',0.12,0.06); }
+  function soundFinish(){ playTone(880,'sine',0.12,0.06); playTone(660,'triangle',0.16,0.04); }
+
+  // ===========================
+  // Core typing logic (kept & extended)
+  // ===========================
+  let words = [
+    "aku","kamu","kita","sukses","cepat","fokus","hebat","menang","percaya",
+    "berani","latihan","mister","jon","semangat","usaha","tujuan","nyata",
+    "disiplin","terus","maju","pantang","menyerah","jari","kerja","kuat","kreatif"
+  ];
+
+  const quotes = [
+    "Jangan takut mulai — setiap ketikan membawa perubahan.",
+    "Disiplin kecil setiap hari menghasilkan hasil besar.",
+    "Kecepatan tumbuh dari latihan yang konsisten.",
+    "Fokus hari ini, hasil esok akan terlihat.",
+    "Kegigihan melewati rintangan membentuk juara.",
+    "Satu kata lagi, satu langkah lebih dekat.",
+    "Latihan hari ini menentukan kemampuan besok.",
+    "Buat setiap ketikan berarti — itu namanya progres.",
+    "Jangan bandingkan, cukup kalahkan skor kemarin.",
+    "Kerja kecil yang terus diulang adalah kemenangan besar."
+  ];
+
+  const inputEl = document.getElementById('input');
+  const wordArea = document.getElementById('wordArea');
+  const timerEl = document.getElementById('timer');
+  const wpmEl = document.getElementById('wpm');
+  const accEl = document.getElementById('acc');
+  const bestEl = document.getElementById('best');
+  const startBtn = document.getElementById('start');
+  const resetBtn = document.getElementById('reset');
+  const durationSelect = document.getElementById('durationSelect');
+  const nameInput = document.getElementById('nameInput');
+  const motivationEl = document.getElementById('motivation');
+  const quoteEl = document.getElementById('quote');
+  const achievementsEl = document.getElementById('achievements');
+
+  let duration = parseInt(durationSelect.value,10);
+  durationSelect.addEventListener('change', ()=>{ duration = parseInt(durationSelect.value,10); updateTimerDisplay(duration); });
+
+  function shuffle(arr){
+    let a = arr.slice();
+    for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+    return a;
+  }
+
+  // state
+  let timeLeft = duration, interval=null, motTimer=null;
+  let started=false, startTime=0, currentIndex=0;
+  let correctChars=0, totalChars=0;
+  let bestScore = Number(localStorage.getItem('bestWPM') || 0);
+  bestEl.textContent = bestScore;
+
+  // chart history stored in localStorage as array of numbers
+  let history = JSON.parse(localStorage.getItem('mj_history') || '[]');
+
+  // render random quote
+  function showRandomQuote(){
+    const q = quotes[Math.floor(Math.random()*quotes.length)];
+    quoteEl.textContent = q;
+  }
+  showRandomQuote();
+
+  // render words
+  function renderWords(){
+    wordArea.innerHTML = words.map((w,i)=>`<span class="${i===0?'active':''}">${w}</span>`).join(' ');
+  }
+  renderWords();
+
+  function updateTimerDisplay(t){
+    timerEl.textContent = `${t} detik`;
+  }
+  updateTimerDisplay(duration);
+
+  function startSession(){
+    if(started) return;
+    // resume audio context on user gesture
+    if(audioCtx && audioCtx.state === 'suspended'){ audioCtx.resume(); }
+
+    started = true;
+    duration = parseInt(durationSelect.value,10);
+    timeLeft = duration;
+    updateTimerDisplay(timeLeft);
+
+    words = shuffle(words);
+    renderWords();
+    inputEl.disabled = false;
+    inputEl.focus();
+    currentIndex = 0;
+    correctChars = 0;
+    totalChars = 0;
+    startTime = Date.now();
+    nameInput.blur();
+
+    // motivations rotator
+    motTimer = setInterval(()=>{
+      motivationEl.textContent = quotes[Math.floor(Math.random()*quotes.length)];
+    }, 3500);
+
+    interval = setInterval(()=>{
+      timeLeft--;
+      updateTimerDisplay(timeLeft);
+      if(timeLeft <= 0) endSession();
+      // update live WPM
+      const elapsedMin = (Date.now() - startTime)/60000;
+      const wpmLive = elapsedMin > 0 ? Math.round((correctChars/5)/elapsedMin) : 0;
+      wpmEl.textContent = wpmLive;
+    },1000);
+  }
+
+  function endSession(){
+    if(!started) return;
+    clearInterval(interval); clearInterval(motTimer);
+    started = false; inputEl.disabled = true;
+    const elapsedMin = Math.max((Date.now() - startTime)/60000, 1/60000);
+    const wpm = Math.round((correctChars/5)/elapsedMin);
+    const acc = totalChars > 0 ? Math.round((correctChars/totalChars)*100) : 100;
+    wpmEl.textContent = wpm;
+    accEl.textContent = acc + '%';
+    motivationEl.textContent = `✨ Hebat ${nameInput.value.trim() || 'Pemain'}! Skormu: ${wpm} WPM`;
+
+    // add to history and persist
+    history.push({ts:Date.now(), wpm:wpm});
+    if(history.length>30) history.shift(); // cap
+    localStorage.setItem('mj_history', JSON.stringify(history));
+
+    // update best
+    if(wpm > bestScore){ bestScore = wpm; localStorage.setItem('bestWPM', String(bestScore)); bestEl.textContent = bestScore; }
+
+    // show badge
+    showBadgeForWPM(wpm);
+
+    // always show confetti and finish sound
+    runConfetti();
+    soundFinish();
+
+    // update chart
+    drawChart();
+
+    // rotate quote
+    showRandomQuote();
+  }
+
+  function resetSession(){
+    clearInterval(interval); clearInterval(motTimer);
+    started=false; inputEl.value=''; inputEl.disabled=true;
+    timeLeft = parseInt(durationSelect.value,10);
+    updateTimerDisplay(timeLeft);
+    motivationEl.textContent = "✨ Siap mengetik lagi?";
+    wpmEl.textContent = '0'; accEl.textContent='0%';
+    words = shuffle(words);
+    renderWords();
+  }
+
+  // typing input handler
+  inputEl.addEventListener('input', ()=>{
+    if(!started) return;
+    const spans = wordArea.querySelectorAll('span');
+    const currentWord = words[currentIndex];
+    const typed = inputEl.value.replace(/\s+/g,''); // no spaces
+    const currentSpan = spans[currentIndex];
+
+    // visual error/ok
+    if(!currentWord.startsWith(typed)){
+      currentSpan.style.backgroundColor = 'var(--danger)';
+      currentSpan.style.color = '#fff';
+      soundWrongThrottled();
+    } else {
+      currentSpan.style.backgroundColor = 'var(--accent)';
+      currentSpan.style.color = '#05203a';
+      // optional soft sound only on complete word
+    }
+
+    if(typed === currentWord){
+      // correct: award
+      correctChars += currentWord.length;
+      totalChars += currentWord.length;
+      soundCorrect();
+      currentIndex++;
+      inputEl.value = '';
+      if(currentIndex >= words.length) currentIndex = 0;
+      renderWords();
+      // mark active
+      const next = wordArea.querySelectorAll('span')[currentIndex];
+      if(next) next.classList.add('active');
+    } else {
+      // counting typed chars for accuracy
+      totalChars++;
+    }
+  });
+
+  // small throttle for wrong sound so it doesn't spam
+  let wrongThrottle = 0;
+  function soundWrongThrottled(){
+    const now = Date.now();
+    if(now - wrongThrottle > 250){
+      soundWrong();
+      wrongThrottle = now;
+    }
+  }
+
+  // achievements (badges) based on WPM thresholds (customizable)
+  function showBadgeForWPM(wpm){
+    achievementsEl.innerHTML = '';
+    const badges = [];
+    if(wpm > 80) badges.push('Fokus Master');
+    if(wpm > 60) badges.push('Cepat Banget');
+    if(wpm > 40) badges.push('Maju Pesat');
+    if(wpm > 20) badges.push('Pemula Hebat');
+    if(badges.length === 0) badges.push('Terus Berlatih');
+
+    badges.slice(0,3).forEach(b=>{
+      const el = document.createElement('span');
+      el.className='achievement';
+      el.textContent = b;
+      achievementsEl.appendChild(el);
+    });
+  }
+
+  // ===========================
+  // Confetti (simple particles)
+  // ===========================
+  const confettiCanvas = document.getElementById('confettiCanvas');
+  const confettiCtx = confettiCanvas.getContext('2d');
+  let confettiParticles = [];
+  function resizeConfetti(){ confettiCanvas.width = window.innerWidth; confettiCanvas.height = window.innerHeight; }
+  window.addEventListener('resize', resizeConfetti); resizeConfetti();
+
+  function runConfetti(){
+    confettiParticles = [];
+    const count = 120;
+    for(let i=0;i<count;i++){
+      confettiParticles.push({
+        x: window.innerWidth/2 + (Math.random()-0.5)*300,
+        y: window.innerHeight/2 + (Math.random()-0.5)*80,
+        vx: (Math.random()-0.5)*8,
+        vy: -6 - Math.random()*8,
+        size: 6 + Math.random()*8,
+        color: `hsl(${Math.floor(Math.random()*60)+180},70%,60%)`,
+        rot: Math.random()*360,
+        vr: (Math.random()-0.5)*10,
+        life: 80 + Math.random()*60
+      });
+    }
+    // animate for a bit
+    let frames = 0;
+    const anim = setInterval(()=>{
+      frames++;
+      confettiCtx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height);
+      confettiParticles.forEach(p=>{
+        p.x += p.vx; p.y += p.vy; p.vy += 0.35; p.rot += p.vr; p.life--;
+        confettiCtx.save();
+        confettiCtx.translate(p.x,p.y);
+        confettiCtx.rotate(p.rot * Math.PI/180);
+        confettiCtx.fillStyle = p.color;
+        confettiCtx.fillRect(-p.size/2, -p.size/2, p.size, p.size*0.6);
+        confettiCtx.restore();
+      });
+      confettiParticles = confettiParticles.filter(p=>p.life>0 && p.y < window.innerHeight+200);
+      if(frames>140 || confettiParticles.length===0){ clearInterval(anim); confettiCtx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height); }
+    }, 1000/60);
+  }
+
+  // ===========================
+  // Simple line chart (canvas)
+  // ===========================
+  const chartCanvas = document.getElementById('chart');
+  const chartCtx = chartCanvas.getContext('2d');
+  function resizeChart(){ chartCanvas.width = chartCanvas.clientWidth; chartCanvas.height = chartCanvas.clientHeight; }
+  window.addEventListener('resize', resizeChart); resizeChart();
+
+  function drawChart(){
+    resizeChart();
+    const data = history.map(h=>h.wpm);
+    // clear
+    chartCtx.clearRect(0,0,chartCanvas.width,chartCanvas.height);
+    if(data.length === 0){
+      chartCtx.fillStyle = 'rgba(255,255,255,0.08)';
+      chartCtx.fillRect(0,0,chartCanvas.width,chartCanvas.height);
+      chartCtx.fillStyle = 'rgba(255,255,255,0.7)';
+      chartCtx.font = '14px Inter, sans-serif';
+      chartCtx.fillText('Belum ada data latihan. Selesaikan satu sesi untuk melihat grafik.', 12, 24);
+      return;
+    }
+    // padding
+    const pad = 18;
+    const w = chartCanvas.width - pad*2;
+    const h = chartCanvas.height - pad*2;
+    const max = Math.max(...data,10);
+    const min = Math.min(...data,0);
+    // draw grid lines
+    chartCtx.strokeStyle = 'rgba(255,255,255,0.06)'; chartCtx.lineWidth = 1;
+    for(let i=0;i<4;i++){
+      const y = pad + i*(h/3);
+      chartCtx.beginPath(); chartCtx.moveTo(pad,y); chartCtx.lineTo(pad+w,y); chartCtx.stroke();
+    }
+    // draw line
+    chartCtx.beginPath();
+    data.forEach((v,i)=>{
+      const x = pad + (i/(data.length-1 || 1)) * w;
+      const y = pad + h - ((v - min)/(max - min || 1)) * h;
+      if(i===0) chartCtx.moveTo(x,y); else chartCtx.lineTo(x,y);
+    });
+    chartCtx.strokeStyle = 'rgba(56,189,248,0.95)'; chartCtx.lineWidth = 2.5; chartCtx.stroke();
+
+    // draw points
+    data.forEach((v,i)=>{
+      const x = pad + (i/(data.length-1 || 1)) * w;
+      const y = pad + h - ((v - min)/(max - min || 1)) * h;
+      chartCtx.beginPath();
+      chartCtx.fillStyle = 'white';
+      chartCtx.arc(x,y,3,0,Math.PI*2); chartCtx.fill();
+    });
+
+    // labels
+    chartCtx.fillStyle = 'rgba(255,255,255,0.9)';
+    chartCtx.font = '12px Inter, sans-serif';
+    chartCtx.fillText('Terakhir: ' + data.slice(-1)[0] + ' WPM', pad, pad-4);
+  }
+
+  // initial chart draw from stored history
+  drawChart();
+
+  // ===========================
+  // Badge display on page load (best)
+  // ===========================
+  function showInitialBadge(){
+    achievementsEl.innerHTML = '';
+    if(bestScore > 0) {
+      const el = document.createElement('span');
+      el.className = 'achievement';
+      el.textContent = 'Terbaik: ' + bestScore + ' WPM';
+      achievementsEl.appendChild(el);
+    } else {
+      achievementsEl.textContent = 'Mulai latihan untuk dapat lencana!';
+    }
+  }
+  showInitialBadge();
+
+  // ===========================
+  // wire up buttons
+  // ===========================
+  startBtn.addEventListener('click', startSession);
+  resetBtn.addEventListener('click', resetSession);
+
+  // ensure pressing Enter focuses input and starts quickly
+  nameInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ startSession(); } });
+
+  // save name
+  nameInput.addEventListener('blur', ()=>{ localStorage.setItem('mj_name', nameInput.value.trim()); });
+  nameInput.value = localStorage.getItem('mj_name') || '';
+
+  // keyboard shortcut: Space to start when not typing
+  window.addEventListener('keydown', (e)=>{
+    if(e.code === 'Space' && document.activeElement !== inputEl){ e.preventDefault(); startSession(); }
+  });
+
+  // Adjust to show initial quote and state
+  quoteEl.textContent = quotes[Math.floor(Math.random()*quotes.length)];
+
+  // on load attempt to unlock audio on user gesture (safe)
+  document.addEventListener('click', ()=>{ if(audioCtx && audioCtx.state === 'suspended'){ audioCtx.resume(); } }, {once:true});
+
+  // draw chart again occasionally (in case)
+  setInterval(drawChart, 2000);
+  </script>
+</body>
+</html>
